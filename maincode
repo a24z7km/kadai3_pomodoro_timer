@@ -73,7 +73,7 @@ stop() {
   total_min=$((cycles * 25 ))
   total_hour=$((cycles * 25 / 60 ))
   msg "Completed cycles : $cycles"
-  msg "Total focus time : ${total_min} min (${total_hour})"
+  msg "Total focus time : ${total_min} min (${total_hour} hour )"
 }
 
 status() {
