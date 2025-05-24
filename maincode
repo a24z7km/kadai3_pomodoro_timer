@@ -71,8 +71,9 @@ stop() {
 
   cycles=$(grep -c ',WORK_END' "$LOGFILE" || true)
   total_min=$((cycles * WORK_SEC ))
+  total_hour=$((cycles * WORK_SEC / 60 ))
   msg "Completed cycles : $cycles"
-  msg "Total focus time : ${total_min} min"
+  msg "Total focus time : ${total_min} min (${total_hour})"
 }
 
 status() {
