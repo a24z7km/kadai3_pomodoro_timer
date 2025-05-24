@@ -34,23 +34,33 @@ start() {
   (
     trap 'rm -f "$PIDFILE"; exit' INT TERM EXIT  # 後片付け
 
+    # サイクルカウンターを初期化
+    cycle_count=1
+
     while true; do
+      # その日の累積サイクル数を計算
+      total_today=$(grep -c ',WORK_END' "$LOGFILE" 2>/dev/null || echo "0")
+      next_cycle=$((total_today + cycle_count))
+
       echo "$(date '+%F %T'),WORK_START"  >>"$LOGFILE"
+      msg "[$(date '+%H:%M')] 🍅 Cycle ${next_cycle} (Session ${cycle_count}): Work session started!"
       sleep "$WORK_SEC"
       echo "$(date '+%F %T'),WORK_END"    >>"$LOGFILE"
-      msg "[$(date '+%H:%M')] Work block finished — take 5‑min break!"
+      msg "[$(date '+%H:%M')] ✅ Cycle ${next_cycle} completed — take 5‑min break!"
 
       echo "$(date '+%F %T'),BREAK_START" >>"$LOGFILE"
       sleep "$BREAK_SEC"
       echo "$(date '+%F %T'),BREAK_END"   >>"$LOGFILE"
-      msg "[$(date '+%H:%M')] Break over — back to focus!"
+      msg "[$(date '+%H:%M')] ☕ Break over — starting next work session!"
+
+      # サイクル完了後にカウンターを増加
+      ((cycle_count++))
     done
   ) &
   
   # バックグラウンドプロセスのPIDを記録
   echo $! >"$PIDFILE"
 }
-
 stop() {
   if [[ ! -f $PIDFILE ]]; then msg "No active work session."; return; fi
 
