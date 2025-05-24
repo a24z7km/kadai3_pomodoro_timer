@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+
+# ------------------------------------------------------------
+#   worklog_pomodoro.sh
+#   Pomodoro timer ─ 25‑min work / 5‑min break loops.
+#   Logs to $HOME/.worklog_pomodoro/YYYY‑MM‑DD.csv
+#   On stop: prints completed cycles & total focused minutes.
+#   Usage : worklog_pomodoro.sh {start|stop|status}
+# ------------------------------------------------------------
+set -euo pipefail
+
+# --- CONFIG -------------------------------------------------
+LOGDIR="$HOME/.worklog_pomodoro"        # ← 保存先
+PIDFILE="$LOGDIR/pid"                  # ← 実行中 PID
+WORK_SEC=$((1*60))   # 作業 25 分（秒） #あとで25に変更
+BREAK_SEC=$((1*60))   # 休憩  5 分（秒） #あとで5に変更
+# ------------------------------------------------------------
+
+mkdir -p "$LOGDIR"
+LOGFILE="$LOGDIR/$(date +%F).csv"
+
+# 1 行メッセージ
+msg(){ printf '%s\n' "$*"; }
+
+start() {
+  # 二重起動チェック
+  if [[ -f $PIDFILE ]] && kill -0 "$(<"$PIDFILE")" 2>/dev/null; then
+    msg "Already running (PID $(<"$PIDFILE"))."; return 1; fi
+
+  msg "Pomodoro started 🚀 (work ${WORK_SEC}s / break ${BREAK_SEC}s)"
+  echo "$(date '+%F %T'),SESSION_START" >>"$LOGFILE"
+
+  # サブシェルでバックグラウンド実行
+  (
+    trap 'rm -f "$PIDFILE"; exit' INT TERM EXIT  # 後片付け
+
+    while true; do
+      echo "$(date '+%F %T'),WORK_START"  >>"$LOGFILE"
+      sleep "$WORK_SEC"
+      echo "$(date '+%F %T'),WORK_END"    >>"$LOGFILE"
+      msg "[$(date '+%H:%M')] Work block finished — take 5‑min break!"
+
+      echo "$(date '+%F %T'),BREAK_START" >>"$LOGFILE"
+      sleep "$BREAK_SEC"
+      echo "$(date '+%F %T'),BREAK_END"   >>"$LOGFILE"
+      msg "[$(date '+%H:%M')] Break over — back to focus!"
+    done
+  ) &
+  
+  # バックグラウンドプロセスのPIDを記録
+  echo $! >"$PIDFILE"
+}
+
+stop() {
+  if [[ ! -f $PIDFILE ]]; then msg "No active work session."; return; fi
+
+  pid=$(<"$PIDFILE")
+  kill "$pid" 2>/dev/null || true
+  rm -f "$PIDFILE"
+  echo "$(date '+%F %T'),SESSION_END" >>"$LOGFILE"
+
+  cycles=$(grep -c ',WORK_END' "$LOGFILE" || true)
+  total_min=$((cycles * WORK_SEC ))
+  msg "Completed cycles : $cycles"
+  msg "Total focus time : ${total_min} min"
+}
+
+status() {
+  if [[ -f $PIDFILE ]] && kill -0 "$(<"$PIDFILE")" 2>/dev/null; then
+    msg "Work session running (PID $(<"$PIDFILE")).";
+  else
+    msg "No active work session."; fi
+}
+
+case ${1:-} in
+  start)  start  ;;
+  stop)   stop   ;;
+  status) status ;;
+  *) msg "Usage: $0 {start|stop|status}"; exit 1 ;;
+ esac
