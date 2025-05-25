@@ -28,7 +28,7 @@ start() {
   if [[ -f $PIDFILE ]] && kill -0 "$(<"$PIDFILE")" 2>/dev/null; then
     msg "Already running (PID $(<"$PIDFILE"))."; return 1; fi
 
-  msg "Pomodoro started 🚀 (work ${WORK_SEC / 60 }mins / break ${BREAK_SEC / 60 }mins)"
+  msg "Pomodoro started 🚀 (work $((WORK_SEC/60))min / break $((BREAK_SEC/60))min)"
   echo "$(date '+%F %T'),SESSION_START" >>"$LOGFILE"
 
   # サブシェルでバックグラウンド実行
