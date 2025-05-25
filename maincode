@@ -23,12 +23,19 @@ LOGFILE="$LOGDIR/$(date +%F).csv"
 # 1 行メッセージ
 msg(){ printf '%s\n' "$*"; }
 
+# デスクトップ通知関数
+notify() {
+  local message="$1"
+  osascript -e "display notification \"$message\" with title \"Pomodoro Timer\""
+}
+
 start() {
   # 二重起動チェック
   if [[ -f $PIDFILE ]] && kill -0 "$(<"$PIDFILE")" 2>/dev/null; then
     msg "Already running (PID $(<"$PIDFILE"))."; return 1; fi
 
   msg "Pomodoro started 🚀 (work $((WORK_SEC/60))min / break $((BREAK_SEC/60))min)"
+  notify "Pomodoro started 🚀 Work: $((WORK_SEC/60)) min, Break: $((BREAK_SEC/60)) min"
   echo "$(date '+%F %T'),SESSION_START" >>"$LOGFILE"
 
   # サブシェルでバックグラウンド実行
@@ -46,48 +53,45 @@ start() {
 
       echo "$(date '+%F %T'),WORK_START"  >>"$LOGFILE"
       msg "[$(date '+%H:%M')] 🍅 Cycle ${next_cycle} (Session ${cycle_count}): Work session started!"
+      notify "🍅 Cycle ${next_cycle}: Work session started!"
       sleep "$WORK_SEC"
+
       echo "$(date '+%F %T'),WORK_END"    >>"$LOGFILE"
       msg "[$(date '+%H:%M')] ✅ Cycle ${next_cycle} completed — take 5‑min break!"
-
-      echo "$(date '+%F %T'),BREAK_START" >>"$LOGFILE"
+      notify "✅ Cycle ${next_cycle} completed — take a 5‑min break!"
       sleep "$BREAK_SEC"
-      echo "$(date '+%F %T'),BREAK_END"   >>"$LOGFILE"
-      msg "[$(date '+%H:%M')] ☕ Break over — starting next work session!"
 
-      # サイクル完了後にカウンターを増加
-      cycle_count=$((cycle_count + 1))
+      echo "$(date '+%F %T'),BREAK_END"   >>"$LOGFILE"
+      msg "[$(date '+%H:%M')] 🕒 Break over — starting next cycle!"
+      notify "🕒 Break over — starting next cycle!"
+      cycle_count+=1
     done
   ) &
-  
-  # バックグラウンドプロセスのPIDを記録
-  echo $! >"$PIDFILE"
+  echo "$!" >"$PIDFILE"
 }
+
 stop() {
-  if [[ ! -f $PIDFILE ]]; then msg "No active work session."; return; fi
-
-  pid=$(<"$PIDFILE")
-  kill "$pid" 2>/dev/null || true
-  rm -f "$PIDFILE"
-  echo "$(date '+%F %T'),SESSION_END" >>"$LOGFILE"
-
-  cycles=$(grep -c ',WORK_END' "$LOGFILE" || true)
-  total_min=$((cycles * 25 ))
-  total_hour=$((cycles * 25 / 60 ))
-  msg "Completed cycles : $cycles"
-  msg "Total focus time : ${total_min} min (${total_hour} hour )"
+  if [[ -f $PIDFILE ]] && kill -0 "$(<"$PIDFILE")" 2>/dev/null; then
+    kill "$(<"$PIDFILE")" && rm -f "$PIDFILE"
+    msg "Pomodoro stopped."
+    notify "Pomodoro stopped."
+    echo "$(date '+%F %T'),SESSION_STOP" >>"$LOGFILE"
+  else
+    msg "Pomodoro is not running."
+  fi
 }
 
 status() {
   if [[ -f $PIDFILE ]] && kill -0 "$(<"$PIDFILE")" 2>/dev/null; then
-    msg "Work session running (PID $(<"$PIDFILE")).";
+    msg "Pomodoro is running (PID $(<"$PIDFILE"))."
   else
-    msg "No active work session."; fi
+    msg "Pomodoro is not running."
+  fi
 }
 
-case ${1:-} in
-  start)  start  ;;
-  stop)   stop   ;;
+case "$1" in
+  start) start ;;
+  stop) stop ;;
   status) status ;;
-  *) msg "Usage: $0 {start|stop|status}"; exit 1 ;;
- esac
+  *) msg "Usage: $0 {start|stop|status}" ;;
+esac
