@@ -35,11 +35,12 @@ start() {
     trap 'rm -f "$PIDFILE"; exit' INT TERM EXIT  # 後片付け
 
     # サイクルカウンターを初期化
-    cycle_count=1
+    declare -i cycle_count=1
 
     while true; do
       # その日の累積サイクル数を計算
       total_today=$(grep -c ',WORK_END' "$LOGFILE" 2>/dev/null || echo "0")
+      if ! [[ "$total_today" =~ ^[0-9]+$ ]]; then total_today=0; fi
       next_cycle=$((total_today + cycle_count))
 
       echo "$(date '+%F %T'),WORK_START"  >>"$LOGFILE"
@@ -54,7 +55,7 @@ start() {
       msg "[$(date '+%H:%M')] ☕ Break over — starting next work session!"
 
       # サイクル完了後にカウンターを増加
-      ((cycle_count++))
+      cycle_count=$((cycle_count + 1))
     done
   ) &
   
