@@ -67,17 +67,27 @@ stop() {
   if [[ ! -f $PIDFILE ]]; then msg "No active work session."; return; fi
 
   pid=$(<"$PIDFILE")
+  
+  # 親プロセスを終了
   kill "$pid" 2>/dev/null || true
+  
+  # 子プロセスも含めて終了
+  pkill -P "$pid" 2>/dev/null || true
+  
+  # PIDファイルを削除
   rm -f "$PIDFILE"
+  
   echo "$(date '+%F %T'),SESSION_END" >>"$LOGFILE"
 
+  # 作業サイクル数と合計時間を計算
   cycles=$(grep -c ',WORK_END' "$LOGFILE" || true)
-  total_min=$((cycles * 25 ))
-  total_hour=$((cycles * 25 / 60 ))
+  total_min=$((cycles * 25))
+  total_hour=$((cycles * 25 / 60))
+  
+  # 結果を表示
   msg "Completed cycles : $cycles"
   msg "Total focus time : ${total_min} min (${total_hour} hour )"
 }
-
 status() {
   if [[ -f $PIDFILE ]] && kill -0 "$(<"$PIDFILE")" 2>/dev/null; then
     msg "Work session running (PID $(<"$PIDFILE")).";
