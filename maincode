@@ -90,9 +90,26 @@ stop() {
 }
 status() {
   if [[ -f $PIDFILE ]] && kill -0 "$(<"$PIDFILE")" 2>/dev/null; then
-    msg "Work session running (PID $(<"$PIDFILE")).";
+    pid=$(<"$PIDFILE")
+    start_time=$(ps -o lstart= -p "$pid" 2>/dev/null) # プロセスの開始時間を取得
+    current_time=$(date '+%s')                      # 現在時刻（秒）
+    start_time_epoch=$(date -d "$start_time" '+%s' 2>/dev/null) # 開始時間をエポック秒に変換
+    elapsed_time=$((current_time - start_time_epoch)) # 経過時間（秒）
+
+    # サイクル内の経過時間を計算
+    cycle_time=$((WORK_SEC + BREAK_SEC))
+    current_cycle=$((elapsed_time / cycle_time + 1))
+    time_in_cycle=$((elapsed_time % cycle_time))
+
+    # その日の経過サイクル数を計算
+    total_cycles=$(grep -c ',WORK_END' "$LOGFILE" 2>/dev/null || echo 0)
+
+    msg "Work session running (PID $pid)."
+    msg "Current cycle: $current_cycle, Time in cycle: $((time_in_cycle / 60)) min $((time_in_cycle % 60)) sec."
+    msg "Total cycles today: $total_cycles."
   else
-    msg "No active work session."; fi
+    msg "No active work session."
+  fi
 }
 
 case ${1:-} in
