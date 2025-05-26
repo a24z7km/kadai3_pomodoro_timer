@@ -85,6 +85,7 @@ stop() {
   total_hour=$((cycles * 25 / 60))
   
   # 結果を表示
+  msg "Work session ended (PID $pid)."
   msg "Completed cycles : $cycles"
   msg "Total focus time : ${total_min} min (${total_hour} hour )"
 }
