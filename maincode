@@ -126,5 +126,4 @@ case ${1:-} in
   start)  start  ;;
   stop)   stop   ;;
   status) status ;;
-  *) msg "Usage: $0 {start|stop|status}"; exit 1 ;;
  esac
