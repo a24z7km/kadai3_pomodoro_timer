@@ -7,7 +7,9 @@
 #   On stop: prints completed cycles & total focused minutes.
 #   Usage : worklog_pomodoro.sh {start|stop|status}
 # ------------------------------------------------------------
+
 set -euo pipefail
+
 export TZ='Asia/Tokyo'
 
 # --- CONFIG -------------------------------------------------
@@ -63,6 +65,7 @@ start() {
   # バックグラウンドプロセスのPIDを記録
   echo $! >"$PIDFILE"
 }
+
 stop() {
   if [[ ! -f $PIDFILE ]]; then msg "No active work session."; return; fi
 
@@ -80,7 +83,7 @@ stop() {
   echo "$(date '+%F %T'),SESSION_END" >>"$LOGFILE"
 
   # 作業サイクル数と合計時間を計算
-  cycles=$(grep -c ',WORK_END' "$LOGFILE" || true)
+  cycles=$(grep -c ',WORK_END' "$LOGFILE" 2>/dev/null || echo "0")
   total_min=$((cycles * 25))
   total_hour=$((cycles * 25 / 60))
   
@@ -89,6 +92,7 @@ stop() {
   msg "Completed cycles : $cycles"
   msg "Total focus time : ${total_min} min (${total_hour} hour )"
 }
+
 status() {
   if [[ -f $PIDFILE ]] && kill -0 "$(<"$PIDFILE")" 2>/dev/null; then
     pid=$(<"$PIDFILE")
@@ -102,12 +106,16 @@ status() {
     current_cycle=$((elapsed_time / cycle_time + 1))
     time_in_cycle=$((elapsed_time % cycle_time))
 
-    # その日の経過サイクル数を計算
-    total_cycles=$(grep -c ',WORK_END' "$LOGFILE" 2>/dev/null || echo 0)
+    # その日の経過サイクル数を計算（修正版）
+    if [[ -f "$LOGFILE" ]]; then
+      total_cycles=$(grep -c ',WORK_END' "$LOGFILE" 2>/dev/null) || total_cycles=0
+    else
+      total_cycles=0
+    fi
 
     msg "Work session running (PID $pid)."
     msg "Current cycle: $current_cycle, Time in cycle: $((time_in_cycle / 60)) min $((time_in_cycle % 60)) sec."
-    msg "Total cycles today: $total_cycles."
+    msg "Total cycles today: $total_cycles"
   else
     msg "No active work session."
   fi
@@ -117,4 +125,4 @@ case ${1:-} in
   start)  start  ;;
   stop)   stop   ;;
   status) status ;;
- esac
+esac
