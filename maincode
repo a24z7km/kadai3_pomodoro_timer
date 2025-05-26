@@ -105,8 +105,17 @@ status() {
     # その日の経過サイクル数を計算
     total_cycles=$(grep -c ',WORK_END' "$LOGFILE" 2>/dev/null || echo 0)
 
+    # サイクル内の状態を判定
+    if (( time_in_cycle < WORK_SEC )); then
+      phase="Work"
+      time_remaining=$((WORK_SEC - time_in_cycle))
+    else
+      phase="Break"
+      time_remaining=$((cycle_time - time_in_cycle))
+    fi
+
     msg "Work session running (PID $pid)."
-    msg "Current cycle: $current_cycle, Time in cycle: $((time_in_cycle / 60)) min $((time_in_cycle % 60)) sec."
+    msg "Current cycle: $current_cycle, Phase: $phase, Time remaining: $((time_remaining / 60)) min $((time_remaining % 60)) sec."
     msg "Total cycles today: $total_cycles."
   else
     msg "No active work session."
